@@ -1,0 +1,9 @@
+<button 
+  class="btn btn-primary"
+  (click)="onStart()"
+  [disabled]="playing">Start</button>
+<button 
+  class="btn btn-danger"
+  (click)="onStop()"
+  [disabled]="!playing">Stop</button>
+<p>{{ counter }}</p>

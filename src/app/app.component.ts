@@ -6,5 +6,9 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  
+  counts: number[] = [];
+
+  onGameStarted(count: number) {
+    this.counts.push(count);
+  }
 }
