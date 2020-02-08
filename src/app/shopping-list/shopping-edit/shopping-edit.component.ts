@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, Output, EventEmitter } from '@angular/core';
 import { Ingredient } from 'src/app/shared/ingredient.model';
 import { ShoppingListService } from '../shopping-list.service';
 import { NgForm } from '@angular/forms';
@@ -15,6 +15,7 @@ export class ShoppingEditComponent implements OnInit, OnDestroy {
   editMode = false;
   editedItemIndex: number;
   editedItem: Ingredient;
+  @Output() editingStatusChanged = new EventEmitter<number>();
 
   constructor(private shoppingListService: ShoppingListService) { }
 
@@ -22,6 +23,7 @@ export class ShoppingEditComponent implements OnInit, OnDestroy {
     this.subscription = this.shoppingListService.startedEditing.subscribe((index: number) => {
       this.editedItemIndex = index;
       this.editMode = true;
+      this.changeEditingStatus();
       this.editedItem = this.shoppingListService.getIngredient(index);
       this.slForm.setValue({
         name: this.editedItem.name,
@@ -38,20 +40,24 @@ export class ShoppingEditComponent implements OnInit, OnDestroy {
     } else {
       this.shoppingListService.addIngredient(newIngredient);
     }
-    console.log(form.value);
     this.editMode = false;
     form.reset();
-    console.log(form.value);
+    this.changeEditingStatus();
   }
 
   onClear() {
     this.editMode = false;
+    this.changeEditingStatus();
     this.slForm.reset();
   }
 
   onDelete() {
     this.shoppingListService.deleteIngredient(this.editedItemIndex);
     this.onClear();
+  }
+
+  changeEditingStatus() {
+    this.editingStatusChanged.emit(this.editMode ? this.editedItemIndex : null)
   }
 
   ngOnDestroy() {
