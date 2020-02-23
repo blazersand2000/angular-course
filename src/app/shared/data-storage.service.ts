@@ -9,8 +9,9 @@ import { RecipeService } from '../recipes/recipe.service';
 export class DataStorageService {
   private readonly url = 'https://courseproject-aeae3.firebaseio.com/recipes.json'
 
-  constructor(private http: HttpClient,
-              private recipeService: RecipeService) {}
+  constructor(
+    private http: HttpClient,
+    private recipeService: RecipeService) {}
 
   storeRecipes() {
     const recipes = this.recipeService.getRecipes();
@@ -26,10 +27,13 @@ export class DataStorageService {
 
   fetchRecipes() {
     return this.http
-      .get<Recipe[]>(this.url)
-        .pipe(map(recipes => {
+      .get<Recipe[]>(
+        this.url
+      )
+      .pipe(
+        map(recipes => {
           return recipes.map(recipe => {
-            return {...recipe, ingredients: recipe.ingredients ? recipe.ingredients : []};
+            return { ...recipe, ingredients: recipe.ingredients ? recipe.ingredients : [] };
           });
         }),
         tap(recipes => {
