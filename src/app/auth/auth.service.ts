@@ -1,163 +1,30 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { catchError, tap } from 'rxjs/operators';
-import { throwError, BehaviorSubject } from 'rxjs';
-import { environment } from '../../environments/environment';
+import { Store } from '@ngrx/store';
 
-import { User } from './user.model';
-
-export interface AuthResponseData {
-  idToken: string;
-  email: string;
-  refreshToken: string;
-  expiresIn: string;
-  localId: string;
-  registered?: boolean;
-}
+import * as fromApp from '../store/app.reducer';
+import * as AuthActions from './store/auth.actions';
 
 @Injectable({providedIn: 'root'})
 export class AuthService {
-  user = new BehaviorSubject<User>(null);
   private tokenExpirationTimer: any;
   
   constructor(
-    private http: HttpClient,
-    private router: Router
+    private store: Store<fromApp.AppState>
   ) {}
 
-  signup(email: string, password: string) {
-    return this.http.post<AuthResponseData>(
-      'https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + environment.firebaseAPIKey, 
-      {
-        email: email,
-        password: password,
-        returnSecureToken: true
-      }
-    )
-    .pipe(
-      catchError(this.handleError), 
-      tap(resData => {
-        this.handleAuth(
-          resData.email, 
-          resData.localId, 
-          resData.idToken,
-          +resData.expiresIn
-        );
-      })
-    );
-  }
 
-  login(email: string, password: string) {
-    return this.http.post<AuthResponseData>(
-      'https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=' + environment.firebaseAPIKey, 
-      {
-        email: email,
-        password: password,
-        returnSecureToken: true
-      }
-    )
-    .pipe(
-      catchError(this.handleError),
-      tap(resData => {
-        this.handleAuth(
-          resData.email, 
-          resData.localId, 
-          resData.idToken,
-          +resData.expiresIn
-        );
-      })
-    );
-  }
-
-  autoLogin() {
-    const userData: {
-      email: string;
-      id: string;
-      _token: string;
-      _tokenExpirationDate: string;
-    } = JSON.parse( localStorage.getItem('userData'));
-    if (!userData) {
-      return;
-    }
-    const loadedUser = new User(
-      userData.email, 
-      userData.id, 
-      userData._token, 
-      new Date(userData._tokenExpirationDate)
-    );
-
-    if (loadedUser.token) {
-      this.user.next(loadedUser);
-      const expirationDuration = 
-        new Date(userData._tokenExpirationDate).getTime() - 
-        new Date().getTime();
-      this.autoLogout(expirationDuration);
-    } else {
-
-    }
-  }
-
-  logout() {
-    this.user.next(null);
-    this.router.navigate(['/auth']);
-    localStorage.removeItem('userData');
-    if (this.tokenExpirationTimer) {
-      clearTimeout(this.tokenExpirationTimer);
-    }
-    this.tokenExpirationTimer = null;
-  }
-
-  autoLogout(expirationDuration) {
+  setLogoutTimer(expirationDuration) {
     setTimeout(() => {
-      this.logout();
+      this.store.dispatch(new AuthActions.Logout());
     }, expirationDuration)
   }
 
-  private handleError(errorRes: HttpErrorResponse) {
-    let errorMessage = 'An unknown error occurred.'
-    if (!errorRes.error || !errorRes.error.error) {
-      return throwError(errorMessage);
+  clearLogoutTimer() {
+    if (this.tokenExpirationTimer) {
+      clearTimeout(this.tokenExpirationTimer);
+      this.tokenExpirationTimer = null;
     }
-    switch (errorRes.error.error.message) {
-      case 'EMAIL_EXISTS':
-        errorMessage = 'An account with this email already exists.';
-        break;
-      case 'OPERATION_NOT_ALLOWED':
-        errorMessage = 'Sign up is not enabled for this application.';
-        break;
-      case 'TOO_MANY_ATTEMPTS_TRY_LATER':
-        errorMessage = 'Sign up is blocked due to excessive attempts, please try again later.';
-        break;
-      case 'USER_DISABLED':
-        // errorMessage = 'This account is disabled.';
-        // break;
-      case 'EMAIL_NOT_FOUND':
-      case 'INVALID_PASSWORD':
-        errorMessage = 'Invalid email and/or password.';
-        break;
-      default:
-        break;
-    }
-    return throwError(errorMessage);
   }
 
-  private handleAuth(
-    email: string, 
-    userId: string, 
-    token: string, 
-    expiresIn: number
-  ) {
-    const user = new User(
-      email, 
-      userId, 
-      token,
-      new Date(
-        new Date().getTime() + expiresIn * 1000
-      )
-    );
-    this.user.next(user);
-    this.autoLogout(expiresIn * 1000);
-    localStorage.setItem('userData', JSON.stringify(user));
-  }
+
 }
